@@ -99,7 +99,7 @@ const handleJoinFamily = () => {
     
     ElMessage.success('加入成功！')
     router.push('/recipes')
-  } catch (error) {
+  } catch {
     ElMessage.error('家庭ID不存在')
   }
 }

@@ -62,7 +62,7 @@ const copyFamilyId = async () => {
   try {
     await navigator.clipboard.writeText(family.value.id)
     ElMessage.success('家庭ID已复制到剪贴板')
-  } catch (error) {
+  } catch (error){
     ElMessage.error('复制失败，请手动复制')
   }
 }

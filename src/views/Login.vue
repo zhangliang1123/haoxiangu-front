@@ -144,7 +144,7 @@ const handleRegister = () => {
       familyStore.joinFamily(registerForm.value.familyId, newUser)
       newUser.familyId = registerForm.value.familyId
       ElMessage.success('注册成功，已加入家庭')
-    } catch (error) {
+    } catch {
       ElMessage.error('家庭ID不存在')
       return
     }
