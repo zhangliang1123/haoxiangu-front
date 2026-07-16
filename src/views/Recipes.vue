@@ -72,6 +72,14 @@
                   <div @click.stop>
                     <el-button link type="primary" @click="handleEdit(recipe)">编辑</el-button>
                     <el-button link type="danger" @click="handleDelete(recipe.id)">删除</el-button>
+                    <el-button 
+                      v-if="familyId" 
+                      link 
+                      type="success" 
+                      @click="handleTransferToFamily(recipe)"
+                    >
+                      转入家庭菜谱
+                    </el-button>
                   </div>
                 </div>
               </template>
@@ -80,6 +88,60 @@
                 <p>{{ recipe.ingredients }}</p>
                 <h4>制作步骤</h4>
                 <p>{{ recipe.steps }}</p>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+
+      <el-tab-pane 
+        v-if="canManageFamilyRecipes && familyId" 
+        label="待转入菜谱" 
+        name="pending"
+      >
+        <el-alert
+          title="待审核的菜谱转入申请，审核通过后将自动转入家庭菜谱。"
+          type="warning"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 20px"
+        />
+        <el-empty v-if="pendingRequests.length === 0" description="暂无待审核的转入申请" />
+
+        <el-row v-else :gutter="20">
+          <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="request in pendingRequests" :key="request.id">
+            <el-card class="recipe-card pending-card" shadow="hover" @click="handleViewDetail(request.recipe)">
+              <template #header>
+                <div class="card-header">
+                  <span>{{ request.recipe.name }}</span>
+                  <el-tag type="warning">待审核</el-tag>
+                </div>
+              </template>
+              <div class="pending-info">
+                <p><span class="label">申请人：</span>{{ request.applicantName }}</p>
+                <p><span class="label">申请时间：</span>{{ formatTime(request.time) }}</p>
+              </div>
+              <div class="recipe-content">
+                <h4>食材</h4>
+                <p>{{ request.recipe.ingredients }}</p>
+                <h4>制作步骤</h4>
+                <p>{{ request.recipe.steps }}</p>
+              </div>
+              <div class="card-actions">
+                <el-button 
+                  size="small" 
+                  type="success" 
+                  @click.stop="handleApprove(request)"
+                >
+                  通过
+                </el-button>
+                <el-button 
+                  size="small" 
+                  type="danger" 
+                  @click.stop="handleReject(request)"
+                >
+                  拒绝
+                </el-button>
               </div>
             </el-card>
           </el-col>
@@ -138,7 +200,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useFamilyStore } from '@/stores/family'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { Recipe } from '@/types'
+import type { Recipe, RecipeTransferRequest } from '@/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -158,6 +220,7 @@ const recipeForm = ref({
 const userId = computed(() => authStore.user?.id)
 const familyId = computed(() => authStore.user?.familyId)
 const canManageFamilyRecipes = computed(() => Boolean(authStore.user?.isAdmin))
+const userName = computed(() => authStore.user?.phone || '用户')
 const canManageCurrentTabRecipes = computed(() => {
   if (activeTab.value === 'family') {
     return canManageFamilyRecipes.value
@@ -171,6 +234,10 @@ const personalRecipes = computed(() => {
     return []
   }
   return familyStore.getPersonalRecipes(userId.value)
+})
+const pendingRequests = computed(() => {
+  if (!familyId.value) return []
+  return familyStore.getPendingTransferRequests(familyId.value)
 })
 
 const goToJoinFamily = () => {
@@ -207,6 +274,98 @@ const handleDelete = async (id: number) => {
     }
 
     ElMessage.success('删除成功')
+  } catch {
+  }
+}
+
+const handleTransferToFamily = async (recipe: Recipe) => {
+  if (!userId.value || !familyId.value) {
+    ElMessage.warning('请先登录或加入家庭')
+    return
+  }
+
+  if (canManageFamilyRecipes.value) {
+    try {
+      await ElMessageBox.confirm(`确定要将菜谱「${recipe.name}」转入家庭菜谱吗？`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info'
+      })
+
+      const success = familyStore.transferToFamilyDirect(userId.value, recipe.id, familyId.value)
+      if (success) {
+        ElMessage.success('转入成功')
+      } else {
+        ElMessage.error('转入失败')
+      }
+    } catch {
+    }
+  } else {
+    try {
+      await ElMessageBox.confirm(`确定要申请将菜谱「${recipe.name}」转入家庭菜谱吗？`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info'
+      })
+
+      const success = familyStore.applyTransferToFamily(userId.value, recipe.id, familyId.value, userName.value)
+      if (success) {
+        ElMessage.success('申请已提交，等待管理员审核')
+      } else {
+        ElMessage.error('申请失败，可能已存在待审核的申请')
+      }
+    } catch {
+    }
+  }
+}
+
+const formatTime = (timeStr: string) => {
+  const date = new Date(timeStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const handleApprove = async (request: RecipeTransferRequest) => {
+  if (!familyId.value) return
+  
+  try {
+    await ElMessageBox.confirm(`确定要通过「${request.recipe.name}」的转入申请吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'success'
+    })
+
+    const success = familyStore.reviewTransferRequest(familyId.value, request.id, true)
+    if (success) {
+      ElMessage.success('已通过申请')
+    } else {
+      ElMessage.error('操作失败')
+    }
+  } catch {
+  }
+}
+
+const handleReject = async (request: RecipeTransferRequest) => {
+  if (!familyId.value) return
+  
+  try {
+    await ElMessageBox.confirm(`确定要拒绝「${request.recipe.name}」的转入申请吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const success = familyStore.reviewTransferRequest(familyId.value, request.id, false)
+    if (success) {
+      ElMessage.success('已拒绝申请')
+    } else {
+      ElMessage.error('操作失败')
+    }
   } catch {
   }
 }
@@ -262,6 +421,34 @@ onMounted(() => {
 <style scoped>
 .recipe-card {
   cursor: pointer;
+}
+
+.pending-card {
+  border-left: 4px solid #e6a23c;
+}
+
+.pending-info {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #ebeef5;
+}
+
+.pending-info .label {
+  color: #909399;
+}
+
+.pending-info p {
+  margin: 5px 0;
+  color: #666;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #ebeef5;
 }
 
 .recipe-detail .detail-section {

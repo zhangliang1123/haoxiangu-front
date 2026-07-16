@@ -13,6 +13,7 @@ export interface Family {
   recipes: Recipe[]
   orderRecords: OrderRecord[]
   notifications: Notification[]
+  transferRequests: RecipeTransferRequest[]
 }
 
 export interface Recipe {
@@ -21,6 +22,15 @@ export interface Recipe {
   ingredients: string
   steps: string
   createdAt: string
+}
+
+export interface RecipeTransferRequest {
+  id: number
+  recipe: Recipe
+  applicantId: number
+  applicantName: string
+  status: 'pending' | 'approved' | 'rejected'
+  time: string
 }
 
 export interface OrderRecord {
@@ -34,11 +44,12 @@ export interface OrderRecord {
 
 export interface Notification {
   id: number
-  type: 'order'
+  type: 'order' | 'recipe_transfer'
   message: string
   time: string
   read: boolean
   orderRecord?: OrderRecord
+  transferRequestId?: number
 }
 
 export interface AuthState {
