@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-card">
       <template #header>
-        <h2>好鲜谷 - 家庭点餐</h2>
+        <h2>好香哟 - 家庭点餐</h2>
       </template>
       <el-form :model="loginForm" label-width="100px">
         <el-tabs v-model="activeTab">
