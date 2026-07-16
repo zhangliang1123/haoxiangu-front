@@ -77,6 +77,10 @@ const copyFamilyId = async () => {
   margin-bottom: 20px;
 }
 
+.members-card {
+  margin-bottom: 20px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

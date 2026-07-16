@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Family, User, Notification, OrderRecord, Recipe } from '@/types'
+import type { Family, User, Notification, OrderRecord, Recipe, RecipeTransferRequest } from '@/types'
 
 export const useFamilyStore = defineStore('family', () => {
   const families = ref<Family[]>([])
@@ -35,7 +35,8 @@ export const useFamilyStore = defineStore('family', () => {
         }
       ],
       orderRecords: [],
-      notifications: []
+      notifications: [],
+      transferRequests: []
     }
     families.value.push(newFamily)
     currentFamily.value = newFamily
@@ -125,6 +126,11 @@ export const useFamilyStore = defineStore('family', () => {
     const savedFamilies = localStorage.getItem('families')
     if (savedFamilies) {
       families.value = JSON.parse(savedFamilies)
+      families.value.forEach(family => {
+        if (!family.transferRequests) {
+          family.transferRequests = []
+        }
+      })
     }
 
     const savedPersonalRecipes = localStorage.getItem('personalRecipes')
@@ -168,6 +174,108 @@ export const useFamilyStore = defineStore('family', () => {
     saveToLocalStorage()
   }
 
+  const transferToFamilyDirect = (userId: number, recipeId: number, familyId: string) => {
+    const recipes = personalRecipes.value[userId]
+    if (!recipes) return false
+
+    const recipeIndex = recipes.findIndex(r => r.id === recipeId)
+    if (recipeIndex === -1) return false
+
+    const recipe = recipes[recipeIndex]
+    recipes.splice(recipeIndex, 1)
+
+    const family = families.value.find(f => f.id === familyId)
+    if (!family) {
+      recipes.splice(recipeIndex, 0, recipe)
+      return false
+    }
+
+    family.recipes.push(recipe)
+    saveToLocalStorage()
+    return true
+  }
+
+  const applyTransferToFamily = (userId: number, recipeId: number, familyId: string, applicantName: string) => {
+    const recipes = personalRecipes.value[userId]
+    if (!recipes) return false
+
+    const recipe = recipes.find(r => r.id === recipeId)
+    if (!recipe) return false
+
+    const family = families.value.find(f => f.id === familyId)
+    if (!family) return false
+
+    const existingRequest = family.transferRequests.find(
+      req => req.recipe.id === recipeId && req.status === 'pending'
+    )
+    if (existingRequest) return false
+
+    const newRequest: RecipeTransferRequest = {
+      id: Date.now(),
+      recipe,
+      applicantId: userId,
+      applicantName,
+      status: 'pending',
+      time: new Date().toISOString()
+    }
+
+    family.transferRequests.push(newRequest)
+
+    const notification: Notification = {
+      id: Date.now(),
+      type: 'recipe_transfer',
+      message: `${applicantName}申请将菜谱「${recipe.name}」转入家庭菜谱`,
+      time: new Date().toISOString(),
+      read: false,
+      transferRequestId: newRequest.id
+    }
+    family.notifications.unshift(notification)
+
+    saveToLocalStorage()
+    return true
+  }
+
+  const reviewTransferRequest = (familyId: string, requestId: number, approved: boolean) => {
+    const family = families.value.find(f => f.id === familyId)
+    if (!family) return false
+
+    const requestIndex = family.transferRequests.findIndex(req => req.id === requestId)
+    if (requestIndex === -1) return false
+
+    const request = family.transferRequests[requestIndex]
+    request.status = approved ? 'approved' : 'rejected'
+
+    if (approved) {
+      const recipes = personalRecipes.value[request.applicantId]
+      if (recipes) {
+        const recipeIndex = recipes.findIndex(r => r.id === request.recipe.id)
+        if (recipeIndex !== -1) {
+          recipes.splice(recipeIndex, 1)
+        }
+      }
+      family.recipes.push(request.recipe)
+    }
+
+    const resultMessage = approved ? '已通过' : '已拒绝'
+    const notification: Notification = {
+      id: Date.now(),
+      type: 'recipe_transfer',
+      message: `您的菜谱「${request.recipe.name}」转入申请${resultMessage}`,
+      time: new Date().toISOString(),
+      read: false,
+      transferRequestId: requestId
+    }
+    family.notifications.unshift(notification)
+
+    saveToLocalStorage()
+    return true
+  }
+
+  const getPendingTransferRequests = (familyId: string) => {
+    const family = families.value.find(f => f.id === familyId)
+    return family && family.transferRequests ? family.transferRequests.filter(req => req.status === 'pending') : []
+  }
+
   return {
     families,
     currentFamily,
@@ -186,6 +294,10 @@ export const useFamilyStore = defineStore('family', () => {
     getPersonalRecipes,
     addPersonalRecipe,
     updatePersonalRecipe,
-    deletePersonalRecipe
+    deletePersonalRecipe,
+    transferToFamilyDirect,
+    applyTransferToFamily,
+    reviewTransferRequest,
+    getPendingTransferRequests
   }
 })
