@@ -2,7 +2,7 @@
   <el-container class="main-layout">
     <el-header>
       <div class="header-content">
-        <h1>好鲜谷 - 家庭点餐</h1>
+        <h1>好香哟 - 家庭点餐</h1>
         <div class="user-info">
           <template v-if="authStore.user">
             <span>

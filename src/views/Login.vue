@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-card">
       <template #header>
-        <h2>好鲜谷 - 家庭点餐</h2>
+        <h2>好香哟 - 家庭点餐</h2>
       </template>
       <el-form :model="loginForm" label-width="100px">
         <el-tabs v-model="activeTab">
@@ -144,7 +144,7 @@ const handleRegister = () => {
       familyStore.joinFamily(registerForm.value.familyId, newUser)
       newUser.familyId = registerForm.value.familyId
       ElMessage.success('注册成功，已加入家庭')
-    } catch (error) {
+    } catch {
       ElMessage.error('家庭ID不存在')
       return
     }
