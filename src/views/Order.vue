@@ -2,11 +2,11 @@
   <div class="order-page">
     <h2>点餐</h2>
     <p class="tip">请从下方菜谱中选择今天要做的菜</p>
-    
+
     <el-row :gutter="20">
       <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="recipe in recipes" :key="recipe.id">
-        <el-card 
-          class="recipe-card" 
+        <el-card
+          class="recipe-card"
           :class="{ 'selected': selectedRecipes.includes(recipe.id) }"
           shadow="hover"
           @click="toggleSelect(recipe.id)"
@@ -30,7 +30,7 @@
         已选择 <strong>{{ selectedRecipes.length }}</strong> 道菜：
         <span class="recipe-names">{{ getSelectedRecipeNames().join('、') }}</span>
       </div>
-      <el-button type="primary" size="large" @click="handleSubmitOrder">
+      <el-button type="primary" size="large" :loading="submitting" @click="handleSubmitOrder">
         确认点餐
       </el-button>
     </div>
@@ -43,15 +43,15 @@ import { useAuthStore } from '@/stores/auth'
 import { useFamilyStore } from '@/stores/family'
 import { Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { OrderRecord, Notification } from '@/types'
+import type { Recipe } from '@/types'
 
 const authStore = useAuthStore()
 const familyStore = useFamilyStore()
 
 const selectedRecipes = ref<number[]>([])
+const submitting = ref(false)
 
-const recipes = computed(() => familyStore.currentFamily?.recipes || [])
-const familyId = computed(() => authStore.user?.familyId)
+const recipes = computed<Recipe[]>(() => familyStore.familyRecipes)
 
 const toggleSelect = (id: number) => {
   const index = selectedRecipes.value.indexOf(id)
@@ -64,13 +64,13 @@ const toggleSelect = (id: number) => {
 
 const getSelectedRecipeNames = () => {
   return recipes.value
-    .filter(r => selectedRecipes.value.includes(r.id))
-    .map(r => r.name)
+    .filter((r) => selectedRecipes.value.includes(r.id))
+    .map((r) => r.name)
 }
 
 const handleSubmitOrder = async () => {
-  if (!familyId.value || !authStore.user) return
-  
+  if (!authStore.familyId) return
+
   try {
     await ElMessageBox.confirm(
       `确定要点这些菜吗？\n${getSelectedRecipeNames().join('、')}`,
@@ -81,32 +81,19 @@ const handleSubmitOrder = async () => {
         type: 'success'
       }
     )
-    
-    const orderRecord: OrderRecord = {
-      id: Date.now(),
-      time: new Date().toLocaleString('zh-CN'),
-      recipes: getSelectedRecipeNames().join(', '),
-      recipeNames: getSelectedRecipeNames(),
-      userId: authStore.user.id,
-      userName: authStore.user.phone
-    }
-    
-    familyStore.addOrderRecord(familyId.value, orderRecord)
-    
-    const notification: Notification = {
-      id: Date.now(),
-      type: 'order',
-      message: `${authStore.user.phone} 点了菜：${getSelectedRecipeNames().join('、')}`,
-      time: new Date().toLocaleString('zh-CN'),
-      read: false,
-      orderRecord
-    }
-    
-    familyStore.addNotification(familyId.value, notification)
-    
+
+    submitting.value = true
+    await familyStore.createOrder({
+      recipeIds: selectedRecipes.value,
+      recipeNames: getSelectedRecipeNames()
+    })
+
     ElMessage.success('点餐成功！')
     selectedRecipes.value = []
   } catch {
+    // 用户取消或请求失败（失败信息已由拦截器提示）
+  } finally {
+    submitting.value = false
   }
 }
 </script>
@@ -163,7 +150,7 @@ const handleSubmitOrder = async () => {
   right: 0;
   background: white;
   padding: 15px 30px;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: space-between;
   align-items: center;
