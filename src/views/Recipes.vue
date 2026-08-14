@@ -2,7 +2,7 @@
   <div class="recipes-page">
     <div class="page-header">
       <h2>菜谱列表</h2>
-      <el-button v-if="canManageCurrentTabRecipes" type="primary" @click="showAddDialog = true">
+      <el-button v-if="canManageCurrentTabRecipes" type="primary" @click="openAddDialog">
         <el-icon><Plus /></el-icon>
         添加菜谱
       </el-button>
@@ -12,7 +12,7 @@
       <el-tab-pane label="家庭菜谱" name="family">
         <template v-if="familyId">
           <el-empty v-if="familyRecipes.length === 0" description="暂无家庭菜谱">
-            <el-button v-if="canManageFamilyRecipes" type="primary" @click="showAddDialog = true">
+            <el-button v-if="canManageFamilyRecipes" type="primary" @click="openAddDialog">
               添加菜谱
             </el-button>
           </el-empty>
@@ -58,7 +58,7 @@
           style="margin-bottom: 20px"
         />
         <el-empty v-if="personalRecipes.length === 0" description="暂无个人菜谱">
-          <el-button type="primary" @click="showAddDialog = true">
+          <el-button type="primary" @click="openAddDialog">
             添加菜谱
           </el-button>
         </el-empty>
@@ -72,10 +72,10 @@
                   <div @click.stop>
                     <el-button link type="primary" @click="handleEdit(recipe)">编辑</el-button>
                     <el-button link type="danger" @click="handleDelete(recipe.id)">删除</el-button>
-                    <el-button 
-                      v-if="familyId" 
-                      link 
-                      type="success" 
+                    <el-button
+                      v-if="familyId"
+                      link
+                      type="success"
                       @click="handleTransferToFamily(recipe)"
                     >
                       转入家庭菜谱
@@ -94,9 +94,9 @@
         </el-row>
       </el-tab-pane>
 
-      <el-tab-pane 
-        v-if="canManageFamilyRecipes && familyId" 
-        label="待转入菜谱" 
+      <el-tab-pane
+        v-if="canManageFamilyRecipes && familyId"
+        label="待转入菜谱"
         name="pending"
       >
         <el-alert
@@ -113,31 +113,31 @@
             <el-card class="recipe-card pending-card" shadow="hover" @click="handleViewDetail(request.recipe)">
               <template #header>
                 <div class="card-header">
-                  <span>{{ request.recipe.name }}</span>
+                  <span>{{ request.recipe?.name }}</span>
                   <el-tag type="warning">待审核</el-tag>
                 </div>
               </template>
               <div class="pending-info">
                 <p><span class="label">申请人：</span>{{ request.applicantName }}</p>
-                <p><span class="label">申请时间：</span>{{ formatTime(request.time) }}</p>
+                <p><span class="label">申请时间：</span>{{ formatTime(request.createdAt) }}</p>
               </div>
               <div class="recipe-content">
                 <h4>食材</h4>
-                <p>{{ request.recipe.ingredients }}</p>
+                <p>{{ request.recipe?.ingredients }}</p>
                 <h4>制作步骤</h4>
-                <p>{{ request.recipe.steps }}</p>
+                <p>{{ request.recipe?.steps }}</p>
               </div>
               <div class="card-actions">
-                <el-button 
-                  size="small" 
-                  type="success" 
+                <el-button
+                  size="small"
+                  type="success"
                   @click.stop="handleApprove(request)"
                 >
                   通过
                 </el-button>
-                <el-button 
-                  size="small" 
-                  type="danger" 
+                <el-button
+                  size="small"
+                  type="danger"
                   @click.stop="handleReject(request)"
                 >
                   拒绝
@@ -167,7 +167,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showAddDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveRecipe">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSaveRecipe">保存</el-button>
       </template>
     </el-dialog>
 
@@ -198,19 +198,22 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFamilyStore } from '@/stores/family'
+import { useRecipeStore } from '@/stores/recipe'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { Recipe, RecipeTransferRequest } from '@/types'
+import type { Recipe, TransferRequest } from '@/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const familyStore = useFamilyStore()
+const recipeStore = useRecipeStore()
 
-const activeTab = ref('personal')
+const activeTab = ref<'family' | 'personal' | 'pending'>('personal')
 const showAddDialog = ref(false)
 const showDetailDialog = ref(false)
 const editingRecipe = ref<Recipe | null>(null)
 const viewingRecipe = ref<Recipe | null>(null)
+const saving = ref(false)
 const recipeForm = ref({
   name: '',
   ingredients: '',
@@ -218,33 +221,29 @@ const recipeForm = ref({
 })
 
 const userId = computed(() => authStore.user?.id)
-const familyId = computed(() => authStore.user?.familyId)
-const canManageFamilyRecipes = computed(() => Boolean(authStore.user?.isAdmin))
+const familyId = computed(() => authStore.familyId)
+const canManageFamilyRecipes = computed(() => authStore.isAdmin)
 const userName = computed(() => authStore.user?.phone || '用户')
 const canManageCurrentTabRecipes = computed(() => {
-  if (activeTab.value === 'family') {
-    return canManageFamilyRecipes.value
-  }
+  if (activeTab.value === 'family') return canManageFamilyRecipes.value
   return true
 })
 
-const familyRecipes = computed(() => familyStore.currentFamily?.recipes || [])
-const personalRecipes = computed(() => {
-  if (!userId.value) {
-    return []
-  }
-  return familyStore.getPersonalRecipes(userId.value)
-})
-const pendingRequests = computed(() => {
-  if (!familyId.value) return []
-  return familyStore.getPendingTransferRequests(familyId.value)
-})
+const familyRecipes = computed<Recipe[]>(() => familyStore.familyRecipes)
+const personalRecipes = computed<Recipe[]>(() => recipeStore.personalRecipes)
+const pendingRequests = computed<TransferRequest[]>(() => familyStore.pendingTransfers)
 
 const goToJoinFamily = () => {
   router.push('/join-family')
 }
 
-const handleViewDetail = (recipe: Recipe) => {
+const openAddDialog = () => {
+  resetForm()
+  showAddDialog.value = true
+}
+
+const handleViewDetail = (recipe?: Recipe) => {
+  if (!recipe) return
   viewingRecipe.value = recipe
   showDetailDialog.value = true
 }
@@ -253,10 +252,15 @@ const handleEdit = (recipe: Recipe) => {
   editingRecipe.value = recipe
   recipeForm.value = {
     name: recipe.name,
-    ingredients: recipe.ingredients,
-    steps: recipe.steps
+    ingredients: recipe.ingredients || '',
+    steps: recipe.steps || ''
   }
   showAddDialog.value = true
+}
+
+const resetForm = () => {
+  recipeForm.value = { name: '', ingredients: '', steps: '' }
+  editingRecipe.value = null
 }
 
 const handleDelete = async (id: number) => {
@@ -268,13 +272,46 @@ const handleDelete = async (id: number) => {
     })
 
     if (activeTab.value === 'family' && familyId.value) {
-      familyStore.deleteRecipe(familyId.value, id)
+      await familyStore.deleteFamilyRecipe(id)
     } else if (userId.value) {
-      familyStore.deletePersonalRecipe(userId.value, id)
+      await recipeStore.deletePersonalRecipe(id)
     }
-
     ElMessage.success('删除成功')
   } catch {
+    // 用户取消或请求失败（失败信息已由拦截器提示）
+  }
+}
+
+const handleSaveRecipe = async () => {
+  if (!recipeForm.value.name || !recipeForm.value.ingredients || !recipeForm.value.steps) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+
+  const draft = { ...recipeForm.value }
+  saving.value = true
+  try {
+    if (editingRecipe.value) {
+      if (activeTab.value === 'family' && familyId.value) {
+        await familyStore.updateFamilyRecipe(editingRecipe.value.id, draft)
+      } else if (userId.value) {
+        await recipeStore.updatePersonalRecipe(editingRecipe.value.id, draft)
+      }
+      ElMessage.success('编辑成功')
+    } else {
+      if (activeTab.value === 'family' && familyId.value) {
+        await familyStore.addFamilyRecipe(draft)
+      } else if (userId.value) {
+        await recipeStore.addPersonalRecipe(draft)
+      }
+      ElMessage.success('添加成功')
+    }
+    showAddDialog.value = false
+    resetForm()
+  } catch {
+    // 错误信息已由请求拦截器统一提示
+  } finally {
+    saving.value = false
   }
 }
 
@@ -291,14 +328,11 @@ const handleTransferToFamily = async (recipe: Recipe) => {
         cancelButtonText: '取消',
         type: 'info'
       })
-
-      const success = familyStore.transferToFamilyDirect(userId.value, recipe.id, familyId.value)
-      if (success) {
-        ElMessage.success('转入成功')
-      } else {
-        ElMessage.error('转入失败')
-      }
+      await recipeStore.transferToFamilyDirect(recipe.id, familyId.value)
+      await familyStore.refreshFamilyRecipes()
+      ElMessage.success('转入成功')
     } catch {
+      // 用户取消或请求失败
     }
   } else {
     try {
@@ -307,14 +341,13 @@ const handleTransferToFamily = async (recipe: Recipe) => {
         cancelButtonText: '取消',
         type: 'info'
       })
-
-      const success = familyStore.applyTransferToFamily(userId.value, recipe.id, familyId.value, userName.value)
-      if (success) {
-        ElMessage.success('申请已提交，等待管理员审核')
-      } else {
-        ElMessage.error('申请失败，可能已存在待审核的申请')
-      }
+      await familyStore.applyTransferToFamily({
+        recipeId: recipe.id,
+        applicantName: userName.value
+      })
+      ElMessage.success('申请已提交，等待管理员审核')
     } catch {
+      // 用户取消或请求失败
     }
   }
 }
@@ -330,91 +363,40 @@ const formatTime = (timeStr: string) => {
   })
 }
 
-const handleApprove = async (request: RecipeTransferRequest) => {
-  if (!familyId.value) return
-  
+const handleApprove = async (request: TransferRequest) => {
   try {
-    await ElMessageBox.confirm(`确定要通过「${request.recipe.name}」的转入申请吗？`, '提示', {
+    await ElMessageBox.confirm(`确定要通过「${request.recipe?.name}」的转入申请吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'success'
     })
-
-    const success = familyStore.reviewTransferRequest(familyId.value, request.id, true)
-    if (success) {
-      ElMessage.success('已通过申请')
-    } else {
-      ElMessage.error('操作失败')
-    }
+    await familyStore.reviewTransferRequest(request.id, true)
+    ElMessage.success('已通过申请')
   } catch {
+    // 用户取消或请求失败
   }
 }
 
-const handleReject = async (request: RecipeTransferRequest) => {
-  if (!familyId.value) return
-  
+const handleReject = async (request: TransferRequest) => {
   try {
-    await ElMessageBox.confirm(`确定要拒绝「${request.recipe.name}」的转入申请吗？`, '提示', {
+    await ElMessageBox.confirm(`确定要拒绝「${request.recipe?.name}」的转入申请吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-
-    const success = familyStore.reviewTransferRequest(familyId.value, request.id, false)
-    if (success) {
-      ElMessage.success('已拒绝申请')
-    } else {
-      ElMessage.error('操作失败')
-    }
+    await familyStore.reviewTransferRequest(request.id, false)
+    ElMessage.success('已拒绝申请')
   } catch {
+    // 用户取消或请求失败
   }
-}
-
-const handleSaveRecipe = () => {
-  if (!recipeForm.value.name || !recipeForm.value.ingredients || !recipeForm.value.steps) {
-    ElMessage.warning('请填写完整信息')
-    return
-  }
-
-  if (editingRecipe.value) {
-    if (activeTab.value === 'family' && familyId.value) {
-      familyStore.updateRecipe(familyId.value, editingRecipe.value.id, recipeForm.value)
-    } else if (userId.value) {
-      familyStore.updatePersonalRecipe(userId.value, editingRecipe.value.id, recipeForm.value)
-    }
-
-    ElMessage.success('编辑成功')
-  } else {
-    const newRecipe: Recipe = {
-      ...recipeForm.value,
-      id: Date.now(),
-      createdAt: new Date().toISOString()
-    }
-
-    if (activeTab.value === 'family' && familyId.value) {
-      familyStore.addRecipe(familyId.value, newRecipe)
-    } else if (userId.value) {
-      familyStore.addPersonalRecipe(userId.value, newRecipe)
-    }
-
-    ElMessage.success('添加成功')
-  }
-
-  showAddDialog.value = false
-  resetForm()
-}
-
-const resetForm = () => {
-  recipeForm.value = {
-    name: '',
-    ingredients: '',
-    steps: ''
-  }
-  editingRecipe.value = null
 }
 
 onMounted(() => {
-  familyStore.loadFromLocalStorage()
+  // 加载个人菜谱；若已加入家庭但家庭数据缺失，则补加载
+  recipeStore.fetchPersonalRecipes()
+  if (authStore.familyId && !familyStore.currentFamily) {
+    familyStore.loadFamily(authStore.familyId)
+  }
 })
 </script>
 
@@ -465,9 +447,7 @@ onMounted(() => {
   line-height: 1.6;
   margin: 0;
 }
-</style>
 
-<style scoped>
 .recipes-tabs {
   margin-top: 20px;
 }
@@ -475,9 +455,7 @@ onMounted(() => {
 .no-family-placeholder {
   padding: 40px 0;
 }
-</style>
 
-<style scoped>
 .page-header {
   display: flex;
   justify-content: space-between;

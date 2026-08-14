@@ -10,7 +10,7 @@
               <el-button v-if="authStore.user.isAdmin" type="success" size="small" style="margin-left: 10px">管理员</el-button>
               <template v-if="familyId">
                 <span style="margin-left: 10px; font-size: 14px; opacity: 0.9">
-                  家庭: {{ familyStore.currentFamily?.name }} (ID: {{ familyId }})
+                  家庭: {{ familyStore.familyName }} (ID: {{ familyId }})
                 </span>
               </template>
               <template v-else>
@@ -21,7 +21,12 @@
               </template>
             </span>
           </template>
-          <el-badge v-if="authStore.user?.isAdmin && familyId" :value="unreadNotifications.length" :hidden="unreadNotifications.length === 0" class="notification-badge">
+          <el-badge
+            v-if="authStore.user?.isAdmin && familyId"
+            :value="familyStore.unreadNotifications.length"
+            :hidden="familyStore.unreadNotifications.length === 0"
+            class="notification-badge"
+          >
             <el-button type="warning" size="small" @click="showNotifications = true">
               <el-icon><Bell /></el-icon>
               通知
@@ -67,17 +72,17 @@
     </el-container>
 
     <el-dialog v-model="showNotifications" title="通知" width="500px">
-      <el-empty v-if="notifications.length === 0" description="暂无通知" />
+      <el-empty v-if="familyStore.notifications.length === 0" description="暂无通知" />
       <div v-else class="notification-list">
-        <div 
-          v-for="notification in notifications" 
+        <div
+          v-for="notification in familyStore.notifications"
           :key="notification.id"
           class="notification-item"
           :class="{ unread: !notification.read }"
           @click="markAsRead(notification.id)"
         >
           <div class="notification-message">{{ notification.message }}</div>
-          <div class="notification-time">{{ notification.time }}</div>
+          <div class="notification-time">{{ formatTime(notification.createdAt) }}</div>
         </div>
       </div>
     </el-dialog>
@@ -85,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFamilyStore } from '@/stores/family'
@@ -100,15 +105,28 @@ const familyStore = useFamilyStore()
 const showNotifications = ref(false)
 
 const activeMenu = computed(() => route.path)
-const familyId = computed(() => authStore.user?.familyId)
+const familyId = computed(() => authStore.familyId)
 const isJoinFamilyPage = computed(() => route.path === '/join-family')
 const isRecipesPage = computed(() => route.path === '/recipes')
-const showNoFamilyPrompt = computed(() => !familyId.value && !isJoinFamilyPage.value && !isRecipesPage.value)
-const notifications = computed(() => familyStore.currentFamily?.notifications || [])
-const unreadNotifications = computed(() => notifications.value.filter(n => !n.read))
+const showNoFamilyPrompt = computed(
+  () => !familyId.value && !isJoinFamilyPage.value && !isRecipesPage.value
+)
 
+const formatTime = (timeStr: string) => {
+  const date = new Date(timeStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// 退出登录时清空家庭缓存
 const handleLogout = () => {
   authStore.logout()
+  familyStore.clearFamily()
   ElMessage.success('已退出登录')
   router.push('/login')
 }
@@ -117,10 +135,20 @@ const goToJoinFamily = () => {
   router.push('/join-family')
 }
 
-const markAsRead = (id: number) => {
-  if (!familyId.value) return
-  familyStore.markNotificationAsRead(familyId.value, id)
+const markAsRead = async (id: number) => {
+  try {
+    await familyStore.markNotificationAsRead(id)
+  } catch {
+    // 错误信息已由请求拦截器统一提示
+  }
 }
+
+// 用户刷新后直接进入主布局时，若家庭未加载则补加载
+onMounted(() => {
+  if (authStore.familyId && !familyStore.currentFamily) {
+    familyStore.loadFamily(authStore.familyId)
+  }
+})
 </script>
 
 <style scoped>

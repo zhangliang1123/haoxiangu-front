@@ -53,17 +53,25 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
-  const familyStore = useFamilyStore()
-  
-  authStore.checkAuth()
-  familyStore.loadFromLocalStorage()
-  
+
+  // 存在 token 但未恢复用户信息时，先尝试拉取当前用户
+  if (authStore.token && !authStore.user) {
+    await authStore.restoreSession()
+  }
+
   if (to.path !== '/login' && !authStore.isLoggedIn) {
     return '/login'
-  } else if (to.path === '/login' && authStore.isLoggedIn) {
+  }
+  if (to.path === '/login' && authStore.isLoggedIn) {
     return '/recipes'
-  } else if (authStore.user?.familyId) {
-    familyStore.setCurrentFamily(authStore.user.familyId)
+  }
+
+  // 已登录且已加入家庭，但家庭数据尚未加载时，预加载家庭数据
+  if (authStore.isLoggedIn && authStore.familyId) {
+    const familyStore = useFamilyStore()
+    if (!familyStore.currentFamily) {
+      await familyStore.loadFamily(authStore.familyId)
+    }
   }
 })
 
