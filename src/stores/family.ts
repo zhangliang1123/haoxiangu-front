@@ -6,14 +6,7 @@ import { orderApi } from '@/api/order'
 import { notificationApi } from '@/api/notification'
 import { transferApi } from '@/api/transfer'
 import { useAuthStore } from './auth'
-import type {
-  Family,
-  FamilyMember,
-  Notification,
-  OrderRecord,
-  Recipe,
-  TransferRequest
-} from '@/types'
+import type { Family, FamilyMember, Notification, OrderRecord, Recipe, TransferRequest } from '@/types'
 
 type RecipeDraft = Pick<Recipe, 'name' | 'ingredients' | 'steps'>
 
@@ -39,10 +32,13 @@ export const useFamilyStore = defineStore('family', () => {
   const loadFamily = async (id: string) => {
     loading.value = true
     try {
+      const authStore = useAuthStore()
+      const isAdmin = Boolean(authStore.user?.isAdmin)
+      // 待转入申请仅管理员可见，非管理员不调用对应接口
       const [family, familyOrders, transfers] = await Promise.all([
         familyApi.getFamily(id),
         orderApi.getFamilyOrders(id),
-        transferApi.getPendingRequests(id)
+        isAdmin ? transferApi.getPendingRequests(id) : Promise.resolve([])
       ])
       currentFamily.value = family
       familyRecipes.value = family.recipes || []
@@ -70,9 +66,9 @@ export const useFamilyStore = defineStore('family', () => {
   const createFamily = async (name: string) => {
     const authStore = useAuthStore()
     const { family, token } = await familyApi.createFamily(name)
-    await loadFamily(family.id)
     authStore.updateToken(token)
     authStore.updateUser({ familyId: family.id, isAdmin: true })
+    await loadFamily(family.id)
     return family
   }
 
