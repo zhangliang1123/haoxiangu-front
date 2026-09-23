@@ -12,9 +12,7 @@
       <el-tab-pane label="家庭菜谱" name="family">
         <template v-if="familyId">
           <el-empty v-if="familyRecipes.length === 0" description="暂无家庭菜谱">
-            <el-button v-if="canManageFamilyRecipes" type="primary" @click="openAddDialog">
-              添加菜谱
-            </el-button>
+            <el-button v-if="canManageFamilyRecipes" type="primary" @click="openAddDialog">添加菜谱</el-button>
           </el-empty>
 
           <el-row v-else :gutter="20">
@@ -58,9 +56,7 @@
           style="margin-bottom: 20px"
         />
         <el-empty v-if="personalRecipes.length === 0" description="暂无个人菜谱">
-          <el-button type="primary" @click="openAddDialog">
-            添加菜谱
-          </el-button>
+          <el-button type="primary" @click="openAddDialog">添加菜谱</el-button>
         </el-empty>
 
         <el-row v-else :gutter="20">
@@ -72,12 +68,7 @@
                   <div @click.stop>
                     <el-button link type="primary" @click="handleEdit(recipe)">编辑</el-button>
                     <el-button link type="danger" @click="handleDelete(recipe.id)">删除</el-button>
-                    <el-button
-                      v-if="familyId"
-                      link
-                      type="success"
-                      @click="handleTransferToFamily(recipe)"
-                    >
+                    <el-button v-if="familyId" link type="success" @click="handleTransferToFamily(recipe)">
                       转入家庭菜谱
                     </el-button>
                   </div>
@@ -94,11 +85,7 @@
         </el-row>
       </el-tab-pane>
 
-      <el-tab-pane
-        v-if="canManageFamilyRecipes && familyId"
-        label="待转入菜谱"
-        name="pending"
-      >
+      <el-tab-pane v-if="canManageFamilyRecipes && familyId" label="待转入菜谱" name="pending">
         <el-alert
           title="待审核的菜谱转入申请，审核通过后将自动转入家庭菜谱。"
           type="warning"
@@ -118,8 +105,14 @@
                 </div>
               </template>
               <div class="pending-info">
-                <p><span class="label">申请人：</span>{{ request.applicantName }}</p>
-                <p><span class="label">申请时间：</span>{{ formatTime(request.createdAt) }}</p>
+                <p>
+                  <span class="label">申请人：</span>
+                  {{ request.applicantName }}
+                </p>
+                <p>
+                  <span class="label">申请时间：</span>
+                  {{ formatTime(request.createdAt) }}
+                </p>
               </div>
               <div class="recipe-content">
                 <h4>食材</h4>
@@ -128,20 +121,8 @@
                 <p>{{ request.recipe?.steps }}</p>
               </div>
               <div class="card-actions">
-                <el-button
-                  size="small"
-                  type="success"
-                  @click.stop="handleApprove(request)"
-                >
-                  通过
-                </el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click.stop="handleReject(request)"
-                >
-                  拒绝
-                </el-button>
+                <el-button size="small" type="success" @click.stop="handleApprove(request)">通过</el-button>
+                <el-button size="small" type="danger" @click.stop="handleReject(request)">拒绝</el-button>
               </div>
             </el-card>
           </el-col>
@@ -149,11 +130,7 @@
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog
-      v-model="showAddDialog"
-      :title="editingRecipe ? '编辑菜谱' : '添加菜谱'"
-      width="500px"
-    >
+    <el-dialog v-model="showAddDialog" :title="editingRecipe ? '编辑菜谱' : '添加菜谱'" width="500px">
       <el-form :model="recipeForm" label-width="80px">
         <el-form-item label="菜名">
           <el-input v-model="recipeForm.name" placeholder="请输入菜名" />
@@ -171,11 +148,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog
-      v-model="showDetailDialog"
-      :title="viewingRecipe?.name"
-      width="500px"
-    >
+    <el-dialog v-model="showDetailDialog" :title="viewingRecipe?.name" width="500px">
       <div class="recipe-detail">
         <div class="detail-section">
           <h4>食材</h4>
@@ -406,22 +379,22 @@ onMounted(() => {
 }
 
 .pending-card {
-  border-left: 4px solid #e6a23c;
+  border-left: 4px solid var(--hx-warning);
 }
 
 .pending-info {
   margin-bottom: 10px;
   padding-bottom: 10px;
-  border-bottom: 1px dashed #ebeef5;
+  border-bottom: 1px dashed var(--hx-grey-line);
 }
 
 .pending-info .label {
-  color: #909399;
+  color: var(--hx-grey-2);
 }
 
 .pending-info p {
   margin: 5px 0;
-  color: #666;
+  color: var(--hx-grey-1);
 }
 
 .card-actions {
@@ -430,7 +403,7 @@ onMounted(() => {
   gap: 8px;
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px dashed #ebeef5;
+  border-top: 1px dashed var(--hx-grey-line);
 }
 
 .recipe-detail .detail-section {
@@ -438,12 +411,12 @@ onMounted(() => {
 }
 
 .recipe-detail .detail-section h4 {
-  color: #409eff;
+  color: var(--hx-brand);
   margin-bottom: 8px;
 }
 
 .recipe-detail .detail-section p {
-  color: #666;
+  color: var(--hx-grey-1);
   line-height: 1.6;
   margin: 0;
 }
@@ -475,12 +448,12 @@ onMounted(() => {
 
 .recipe-content h4 {
   margin: 10px 0 5px 0;
-  color: #409eff;
+  color: var(--hx-brand);
 }
 
 .recipe-content p {
   margin: 0;
-  color: #666;
+  color: var(--hx-grey-1);
   line-height: 1.6;
 }
 </style>

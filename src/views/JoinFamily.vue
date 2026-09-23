@@ -109,7 +109,7 @@ const handleJoinFamily = async () => {
 .join-family-card h2 {
   margin: 0;
   text-align: center;
-  color: #333;
+  color: var(--hx-text-main);
 }
 
 .family-tabs {

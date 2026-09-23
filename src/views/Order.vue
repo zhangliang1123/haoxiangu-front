@@ -7,7 +7,7 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="recipe in recipes" :key="recipe.id">
         <el-card
           class="recipe-card"
-          :class="{ 'selected': selectedRecipes.includes(recipe.id) }"
+          :class="{ selected: selectedRecipes.includes(recipe.id) }"
           shadow="hover"
           @click="toggleSelect(recipe.id)"
         >
@@ -27,12 +27,12 @@
 
     <div class="action-bar" v-if="selectedRecipes.length > 0">
       <div class="selected-info">
-        已选择 <strong>{{ selectedRecipes.length }}</strong> 道菜：
+        已选择
+        <strong>{{ selectedRecipes.length }}</strong>
+        道菜：
         <span class="recipe-names">{{ getSelectedRecipeNames().join('、') }}</span>
       </div>
-      <el-button type="primary" size="large" :loading="submitting" @click="handleSubmitOrder">
-        确认点餐
-      </el-button>
+      <el-button type="primary" size="large" :loading="submitting" @click="handleSubmitOrder">确认点餐</el-button>
     </div>
   </div>
 </template>
@@ -63,24 +63,18 @@ const toggleSelect = (id: number) => {
 }
 
 const getSelectedRecipeNames = () => {
-  return recipes.value
-    .filter((r) => selectedRecipes.value.includes(r.id))
-    .map((r) => r.name)
+  return recipes.value.filter((r) => selectedRecipes.value.includes(r.id)).map((r) => r.name)
 }
 
 const handleSubmitOrder = async () => {
   if (!authStore.familyId) return
 
   try {
-    await ElMessageBox.confirm(
-      `确定要点这些菜吗？\n${getSelectedRecipeNames().join('、')}`,
-      '确认点餐',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'success'
-      }
-    )
+    await ElMessageBox.confirm(`确定要点这些菜吗？\n${getSelectedRecipeNames().join('、')}`, '确认点餐', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'success'
+    })
 
     submitting.value = true
     await familyStore.createOrder({
@@ -104,7 +98,7 @@ const handleSubmitOrder = async () => {
 }
 
 .tip {
-  color: #666;
+  color: var(--hx-grey-1);
   margin-bottom: 20px;
 }
 
@@ -119,7 +113,7 @@ const handleSubmitOrder = async () => {
 }
 
 .recipe-card.selected {
-  border: 2px solid #67c23a;
+  border: 2px solid var(--hx-success);
 }
 
 .card-header {
@@ -129,18 +123,18 @@ const handleSubmitOrder = async () => {
 }
 
 .check-icon {
-  color: #67c23a;
+  color: var(--hx-success);
   font-size: 20px;
 }
 
 .recipe-content h4 {
   margin: 10px 0 5px 0;
-  color: #409eff;
+  color: var(--hx-brand);
 }
 
 .recipe-content p {
   margin: 0;
-  color: #666;
+  color: var(--hx-grey-1);
 }
 
 .action-bar {
@@ -161,7 +155,7 @@ const handleSubmitOrder = async () => {
 }
 
 .recipe-names {
-  color: #409eff;
+  color: var(--hx-brand);
   margin-left: 10px;
 }
 </style>

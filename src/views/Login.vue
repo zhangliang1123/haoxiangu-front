@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-card">
       <template #header>
-        <h2>好香哟 - 家庭点餐</h2>
+        <h2>好香柚点餐</h2>
       </template>
       <el-form :model="loginForm" label-width="100px">
         <el-tabs v-model="activeTab">
@@ -19,7 +19,7 @@
               </el-button>
             </el-form-item>
           </el-tab-pane>
-          <el-tab-pane label="注册" name="register">
+          <el-tab-pane label="注册" name="register" v-if="false">
             <el-form-item label="手机号">
               <el-input v-model="registerForm.phone" placeholder="请输入手机号" />
             </el-form-item>
@@ -52,6 +52,11 @@
         </el-tabs>
       </el-form>
     </el-card>
+    <div class="site-footer">
+      <a class="beian-link" href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer">
+        皖ICP备2025090449号-1
+      </a>
+    </div>
   </div>
 </template>
 
@@ -148,11 +153,31 @@ const handleRegister = async () => {
 
 <style scoped>
 .login-container {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--hx-brand) 0%, var(--hx-brand-dark) 100%);
+}
+
+.site-footer {
+  position: absolute;
+  right: 0;
+  bottom: 16px;
+  left: 0;
+  text-align: center;
+  color: var(--hx-white);
+  font-size: 12px;
+}
+
+.beian-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.beian-link:hover {
+  text-decoration: underline;
 }
 
 .login-card {
@@ -162,6 +187,6 @@ const handleRegister = async () => {
 .login-card h2 {
   margin: 0;
   text-align: center;
-  color: #333;
+  color: var(--hx-text-main);
 }
 </style>

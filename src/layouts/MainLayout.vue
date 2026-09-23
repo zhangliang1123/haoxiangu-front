@@ -2,12 +2,14 @@
   <el-container class="main-layout">
     <el-header>
       <div class="header-content">
-        <h1>好香哟 - 家庭点餐</h1>
+        <h1>好香柚点餐</h1>
         <div class="user-info">
           <template v-if="authStore.user">
             <span>
               欢迎，{{ authStore.user.phone }}
-              <el-button v-if="authStore.user.isAdmin" type="success" size="small" style="margin-left: 10px">管理员</el-button>
+              <el-button v-if="authStore.user.isAdmin" type="success" size="small" style="margin-left: 10px">
+                管理员
+              </el-button>
               <template v-if="familyId">
                 <span style="margin-left: 10px; font-size: 14px; opacity: 0.9">
                   家庭: {{ familyStore.familyName }} (ID: {{ familyId }})
@@ -38,11 +40,7 @@
     </el-header>
     <el-container>
       <el-aside width="200px">
-        <el-menu
-          :default-active="activeMenu"
-          router
-          class="el-menu-vertical"
-        >
+        <el-menu :default-active="activeMenu" router class="el-menu-vertical">
           <el-menu-item index="/recipes">
             <el-icon><Document /></el-icon>
             <span>菜谱列表</span>
@@ -70,6 +68,11 @@
         <router-view v-else />
       </el-main>
     </el-container>
+    <el-footer class="site-footer">
+      <a class="beian-link" href="https://beian.miit.gov.cn" target="_blank" rel="noopener noreferrer">
+        皖ICP备2025090449号-1
+      </a>
+    </el-footer>
 
     <el-dialog v-model="showNotifications" title="通知" width="500px">
       <el-empty v-if="familyStore.notifications.length === 0" description="暂无通知" />
@@ -82,7 +85,9 @@
           @click="markAsRead(notification.id)"
         >
           <div class="notification-message">{{ notification.message }}</div>
-          <div class="notification-time">{{ formatTime(notification.createdAt) }}</div>
+          <div class="notification-time">
+            {{ formatTime(notification.createdAt) }}
+          </div>
         </div>
       </div>
     </el-dialog>
@@ -108,9 +113,7 @@ const activeMenu = computed(() => route.path)
 const familyId = computed(() => authStore.familyId)
 const isJoinFamilyPage = computed(() => route.path === '/join-family')
 const isRecipesPage = computed(() => route.path === '/recipes')
-const showNoFamilyPrompt = computed(
-  () => !familyId.value && !isJoinFamilyPage.value && !isRecipesPage.value
-)
+const showNoFamilyPrompt = computed(() => !familyId.value && !isJoinFamilyPage.value && !isRecipesPage.value)
 
 const formatTime = (timeStr: string) => {
   const date = new Date(timeStr)
@@ -156,9 +159,28 @@ onMounted(() => {
   height: 100vh;
 }
 
+.site-footer {
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  color: var(--hx-text-secondary);
+  background-color: var(--hx-bg-card);
+  border-top: 1px solid var(--hx-grey-line);
+  font-size: 12px;
+}
+
+.beian-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.beian-link:hover {
+  text-decoration: underline;
+}
+
 .el-header {
-  background-color: #409eff;
-  color: white;
+  background: linear-gradient(135deg, var(--hx-brand) 0%, var(--hx-brand-dark) 100%);
+  color: var(--hx-white);
   display: flex;
   align-items: center;
 }
@@ -185,7 +207,8 @@ onMounted(() => {
 }
 
 .el-aside {
-  background-color: #f5f7fa;
+  background-color: var(--hx-bg-card);
+  border-right: 1px solid var(--hx-grey-line);
 }
 
 .el-menu-vertical {
@@ -193,7 +216,7 @@ onMounted(() => {
 }
 
 .el-main {
-  background-color: #fff;
+  background-color: var(--hx-bg-page);
   padding: 20px;
 }
 
@@ -211,27 +234,27 @@ onMounted(() => {
 
 .notification-item {
   padding: 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--hx-grey-line);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .notification-item:hover {
-  background-color: #f5f7fa;
+  background-color: var(--hx-bg-page);
 }
 
 .notification-item.unread {
-  background-color: #ecf5ff;
+  background-color: var(--hx-brand-light);
 }
 
 .notification-message {
   font-size: 14px;
-  color: #333;
+  color: var(--hx-text-main);
   margin-bottom: 4px;
 }
 
 .notification-time {
   font-size: 12px;
-  color: #999;
+  color: var(--hx-grey-2);
 }
 </style>
